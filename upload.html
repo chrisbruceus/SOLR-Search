@@ -1,0 +1,100 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<html>
+<head>
+<title>OKNG Records Upload</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Unknown" >
+
+<!-- JQUERY and Bootstrap -->
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
+<link href="css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+<script language="Javascript">
+
+  function uploadSOLR () {
+
+    // https://ngoka0-solr.ng.ds.army.mil:8983/solr/test/update?commit=true
+
+     $.ajax({
+        type     : "POST",
+        dataType : "jsonp",
+        url      : "https://ngoka0-solr.ng.ds.army.mil:8983/solr/test/update/?commit=true",
+        data     : { xml: escape("<add><response><doc><field name=id>99999</field></doc></response></add>") }, // CHANGE TO JSON
+        dataType : "text/xml",
+        success  : function(msg){
+            alert('Success ');
+        },
+        error    : function(msg) {
+            alert('Failed');
+        }
+    });
+
+  };
+</script>
+</head>
+<body>
+  <div class="row">
+    <div class="col-md-12">
+        <div class="navbar">
+            <h2><a href="/">OKNG Records Upload</a></h2>
+        </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-upload fa-lg"></i> Upload a Document
+            </div>
+            <!-- /.panel-heading -->
+            <div class="panel-body">
+              <form name="f2" onsubmit='uploadSOLR(); return false;'>  
+                <div class="col-md-12">
+                  <p>SSN: <input name="ssn" type="text"></p>
+                  <p>Last Name: <input name="lastName" type="text"></p>
+                  <p>First Name: <input name="firstName" type="text"> 
+                  <p>Date: <input name="date" type="text"></p>
+                  <p>Scan Date: <input name="scandate" type="text" value="Today's Date"></p>
+                  <p># of Pages: <input name="pages" type="text"> 
+                </div>
+                
+                <div class="col-md-12" id="category"><b>Category: </b>
+                  <select>
+                    <option value="CROS_REF_ADD">CROS_REF_ADD</option>
+                    <option value="CROS_REF">CROS_REF</option>
+                    <option value="DA_FORM">DA_FORM</option>
+                    <option value="MPRJ">MPRJ</option>
+                    <option value="SOS">SOS</option>
+                    <option value="TWENTYRLTR">TWENTYRLTR</option>
+                  </select>
+                </div>
+                <div class="col-md-12" id="group"><b>File: </b>
+                <input type="file" name="myFile">
+                </div>
+              <br />
+               <input value="Upload" type="submit"><button type="reset" value="Reset" onclick="resetPage()">Reset</button></p>
+              </form>
+            </div>
+            <!-- /.panel-body -->
+        </div>
+    </div>
+  </div>
+
+<script>
+
+  function resetPage() {
+    location.reload(true);
+  }
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,770 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<html>
+<head>
+<title>OKNG Records Search</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Unknown" >
+
+<!-- JQUERY and Bootstrap -->
+<script src="js/jquery-3.3.1.min.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
+<link href="css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+<!-- PDF Viewer -->
+<link rel="resource" type="application/l10n" href="web/locale/locale.properties">
+<script src="js/pdf.js"></script>
+<link rel="stylesheet" href="css/viewer.css">
+<script src="js/viewer.js"></script>
+
+<!-- Download JS -->
+<script src="js/download.js"></script>
+
+<script language="Javascript">
+
+  //Default Global Query Parameters
+
+    var callRows = "20";
+    var callStart = "0";
+    var callSortBy = "ssn";
+    var callSort = "asc";
+
+  //Make Global Blank Search Variables
+    var ssnSearch = "";
+    var ssnSearchAdd = "";
+    var lastNameSearch = "";
+    var lastNameSearchAdd = "";
+    var firstNameSearch = "";
+    var firstNameSearchAdd = "";
+    var callGroup = "";
+
+function searchSOLR(pageNumber, groupResult) {
+
+      //Erase old results
+      $(".feed-item, .results-item, .group-item, .pagination, .group-feed-item, .groupresults, .group-result-item").remove();
+
+      //Fill in Text Search Values
+      var form = document.forms['f1'];
+      var ssnSearch = form.ssn.value;
+      var lastNameSearch = form.lastName.value;
+      var firstNameSearch = form.firstName.value;
+
+      // Set the text box values
+      $("#rowsSelect")
+
+      // Set the search Variables
+      if (ssnSearch != "") {
+              ssnSearch = 'ssn%3A' + escape(ssnSearch);
+              ssnSearchAdd = "%20AND%20";
+      }
+
+      if (lastNameSearch != "") {
+          lastNameSearch = 'lastname%3A' + escape(lastNameSearch);
+          lastNameSearchAdd = "%20AND%20";
+      }
+
+      if (firstNameSearch != "") {
+          firstNameSearch = 'firstname%3A' + escape(firstNameSearch);
+          firstNameSearchAdd = "%20AND%20";
+      }
+     
+      //Fill in Radio Search Values
+      var groupRadio = $('input[name=groupRadio]:checked').val();
+      
+
+      if (groupRadio != null) {
+        callGroup = "&group=true&group.field=" + groupRadio;
+      }
+
+      callRows = form.rowsSelect.value;
+      callSortBy = form.sortBySelect.value;
+      callSort = form.sortSelect.value;
+
+      //Make first part of queryString
+      queryString = "https://ngoka0-solr.ng.ds.army.mil:8983/solr/Records/select?q=" + ssnSearch + ssnSearchAdd + lastNameSearch + lastNameSearchAdd + firstNameSearch + firstNameSearchAdd;
+
+      // Create search string
+      qstr = queryString.replace(/%20AND%20$/gi,"") + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=" + callStart + "&sort=" + callSortBy + "%20" + callSort + callGroup;
+
+      $.ajax({
+          url: qstr,
+          crossDomain: true,
+          dataType:'jsonp',
+          jsonpCallback: 'callback'
+      }).done(function(data) {
+
+              // Create groups if any
+              if (data.grouped != null) {
+
+                // SSN
+                if (data.grouped.ssn != null) {
+
+                var resultsNumFound = data.grouped.ssn.matches;
+                
+                //Loop Through SSN
+                  $.each(data.grouped.ssn.groups, function (index,item) {
+                    
+                    var groupSSN = item.groupValue;
+                    var groupSSNCount = item.doclist.numFound;
+
+                    // Build custom qstr to send to groupSearch
+                    GSqstr = queryString.replace(/%20AND%20$/gi,"") + "%20AND%20ssn%3A" + groupSSN + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=0&sort=" + callSortBy + "%20" + callSort;
+
+                    // Make the group HTML
+                    $( '<div class="row group-item">' )
+                    .append("<a href=\"#\" onclick=\"groupSearch('" + GSqstr + "','SSN','" + "XXX-XX-" + groupSSN.slice(5, 9) + "')\">" + "XXX-XX-" + groupSSN.slice(5, 9) + "</a> (" + groupSSNCount + ")")
+                    .appendTo( "#groups" ); // insert into the Groups Div
+
+                  })
+
+                }
+
+                // Last Name
+                if (data.grouped.lastname != null) {
+
+                var resultsNumFound = data.grouped.lastname.matches;
+                
+                //Loop Through lastname
+                  $.each(data.grouped.lastname.groups, function (index,item) {
+                    
+                    var grouplastname = item.groupValue;
+                    var grouplastnameCount = item.doclist.numFound;
+
+                    // Build custom qstr to send to groupSearch
+                    GSqstr = queryString.replace(/%20AND%20$/gi,"") + "%20AND%20lastname%3A" + grouplastname + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=0&sort=" + callSortBy + "%20" + callSort;
+
+                    // Make the group HTML
+                    $( '<div class="row group-item">' )
+                    .append("<a href=\"#\" onclick=\"groupSearch('" + GSqstr + "','Lastname','" + grouplastname + "')\">" + grouplastname + "</a> (" + grouplastnameCount + ")")
+                    .appendTo( "#groups" ); // insert into the Groups Div
+
+
+                  })
+
+                }
+
+                // First Name
+                if (data.grouped.firstname != null) {
+
+                  var resultsNumFound = data.grouped.firstname.matches;
+
+
+                  //Loop Through First Name
+                    $.each(data.grouped.firstname.groups, function (index,item) {
+                      
+                      var groupfirstname = item.groupValue;
+                      var groupfirstnameCount = item.doclist.numFound;
+
+                      // Build custom qstr to send to groupSearch
+                      GSqstr = queryString.replace(/%20AND%20$/gi,"") + "%20AND%20firstname%3A" + groupfirstname + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=0&sort=" + callSortBy + "%20" + callSort;
+
+                      // Make the group HTML
+                      $( '<div class="row group-item">' )
+                      .append("<a href=\"#\" onclick=\"groupSearch('" + GSqstr + "','First Name','" + groupfirstname + "')\">" + groupfirstname + "</a> (" + groupfirstnameCount + ")")
+                      .appendTo( "#groups" ); // insert into the Groups Div
+
+
+                    })
+
+                }
+
+                // Date
+                if (data.grouped.date != null) {
+
+                  var resultsNumFound = data.grouped.date.matches;
+
+                  //Loop Through Date
+                    $.each(data.grouped.date.groups, function (index,item) {
+                      
+                      var groupDate = item.doclist.docs[0].date;
+                      var groupDateCount = item.doclist.numFound;
+
+                      // Build custom qstr to send to groupSearch
+                      GSqstr = queryString.replace(/%20AND%20$/gi,"") + "%20AND%20date%3A" + groupDate + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=0&sort=" + callSortBy + "%20" + callSort;
+
+                      // Make the group HTML
+                      $( '<div class="row group-item">' )
+                      .append("<a href=\"#\" onclick=\"groupSearch('" + GSqstr + "','Date','" + groupDate + "')\">" + groupDate + "</a> (" + groupDateCount + ")")
+                      .appendTo( "#groups" ); // insert into the Groups Div
+
+
+                    })
+
+                  }
+
+                  // Doc ID
+                  if (data.grouped.docid != null) {
+
+                  var resultsNumFound = data.grouped.docid.matches;
+
+                  //Loop Through docid
+                    $.each(data.grouped.docid.groups, function (index,item) {
+                      
+                      var groupdocid = item.groupValue;
+                      var groupdocidCount = item.doclist.numFound;
+
+                      // Build custom qstr to send to groupSearch
+                      GSqstr = queryString.replace(/%20AND%20$/gi,"") + "%20AND%20docid%3A" + groupdocid + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=0&sort=" + callSortBy + "%20" + callSort;
+
+                      // Make the group HTML
+                      $( '<div class="row group-item">' )
+                      .append("<a href=\"#\" onclick=\"groupSearch('" + GSqstr + "','DocID','" + groupdocid + "')\">" + groupdocid + "</a> (" + groupdocidCount + ")")
+                      .appendTo( "#groups" ); // insert into the Groups Div
+
+
+                    })
+
+                  }
+
+                  // Category
+                  if (data.grouped.category != null) {
+
+                    var resultsNumFound = data.grouped.category.matches;
+
+                    //Loop Through Category
+                      $.each(data.grouped.category.groups, function (index,item) {
+                        
+                        var groupcategory = item.groupValue;
+                        var groupcategoryCount = item.doclist.numFound;
+
+                        // Build custom qstr to send to groupSearch
+                        GSqstr = queryString.replace(/%20AND%20$/gi,"") + "%20AND%20category%3A" + groupcategory + "&wt=json&json.wrf=callback&rows=" + callRows + "&start=0&sort=" + callSortBy + "%20" + callSort;
+
+                        // Make the group HTML
+                        $( '<div class="row group-item">' )
+                        .append("<a href=\"#\" onclick=\"groupSearch('" + GSqstr + "','Category','" + groupcategory + "')\">" + groupcategory + "</a> (" + groupcategoryCount + ")")
+                        .appendTo( "#groups" ); // insert into the Groups Div
+
+
+                      })
+
+                    }
+
+                // Make the results variables
+                var resultsStart = data.responseHeader.params.start;
+                var resultsTime = data.responseHeader.QTime;
+
+                // Create the Results HTML
+                $( '<span class="results-item">' )
+                .append(" Results Found: " + resultsNumFound + " - Result Starts At: " + resultsStart + " - Query Time: " + resultsTime + "ms")
+                .appendTo( "#results" ); // insert into the Feed DIV
+              } 
+
+              // Check if groups is off
+              if (data.response != null) {
+                
+                // Make the results variables
+                var resultsNumFound = data.response.numFound;
+                var resultsStart = data.response.start;
+                var resultsTime = data.responseHeader.QTime;
+
+                // Create the Results HTML
+                $( '<span class="results-item">' )
+                .append(" Results Found: " + resultsNumFound + " - Result Starts At: " + resultsStart + " - Query Time: " + resultsTime + "ms")
+                .appendTo( "#results" ); // insert into the Feed DIV
+
+                // Display the feed items without groups - LOOP
+                $.each(data.response.docs, function (index,item) {
+
+                      
+                    // Make the Variables
+                    if (item.fullname != null) {
+                      var name = item.fullname;
+                    } else {
+                      var name = "";
+                    }
+
+                    if (item.firstname != null) {
+                      var firstName = item.firstname;
+                    } else {
+                      var firstName = "";
+                    }
+
+                    if (item.lastname != null) {
+                      var lastName = item.lastname;
+                    } else {
+                      var lastName = "";
+                    }
+
+                    if (item.ssn != null) {
+                      var ssn = item.ssn;
+                      var ssn4 = String(ssn).slice(5, 9);
+                    } else {
+                      var ssn4 = "";
+                    }
+
+                    if (item.date != null) {
+                      var date = item.date;
+                    } else {
+                      var date = "";
+                    }
+                    
+                    if (item.scandate != null) {
+                      var scanDate = item.scandate;
+                    } else {
+                      var scanDate = "";
+                    }
+
+                    if (item.numpages != null) {
+                      var numpages = item.numpages;
+                    } else {
+                      var numbpages = "";
+                    }
+
+                    if (item.docid != null) {
+                      var docID = item.docid;
+                    } else {
+                      var docID = "";
+                    }
+
+                     if (item.link != null) {
+                      var link = item.link;
+                    } else {
+                      var link = "";
+                    }
+                    
+                    if (item.category != null) {
+                      var category = item.category;
+                    } else {
+                      var category = "";
+                    }
+                   
+
+                    // Create the List Items HTML
+                    $( '<div class="row feed-item">' )
+                    .append('<div class="col-md-12"><h3><b>Full Name:</b> ' + name + '<button class="btn btn-default btn-md" onclick="viewDoc(\'' + link + '\', \'' + docID + '.pdf\')">View Document</button></h3></div><div class="col-md-6"><h4><b>SSN:</b> XXX-XX-' + ssn4 + '<br></h4><h4><b>First Name:</b> ' + firstName + '<br></h4><h4><b>Last Name:</b> ' + lastName + '<br></h4><h4><b>Date: </b>' + date + '<br></h4><h4><b>Scan Date: </b>' + scanDate + '</h4></div><div class="col-md-6"><h4><b>Category:</b> ' + category + '<br></h4><h4><b>Doc ID: </b>' + docID + '<br></h4><h4><b>Pages: </b>' + numpages + '<br></h4><h4><b></h4></div><div class="col-md-12"><h4><b>Document Link: <a href="' + link + '">' + link + '</a></h4></div>')
+                    .appendTo( "#feed" ); // insert into the Feed DIV
+
+                })
+
+              }
+
+              // Create the pagination
+              if (resultsNumFound / callRows > 1 && resultsNumFound / callRows < 2) {
+                    $('<ul class=\"pagination\">')
+                  .append("<li class=\"page-item\"></li><li class=\"page-item \" id=\"page1\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('1')\">1</a></li><li class=\"page-item\" id=\"page2\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('2')\">2</a></li>")
+                  .appendTo( "[aria-label='Page navigation']" ); // insert into the Navigation
+                } else if (resultsNumFound / callRows >= 2 && resultsNumFound / callRows < 3) {
+                    $('<ul class=\"pagination\">')
+                  .append("<li class=\"page-item\"></li><li class=\"page-item \" id=\"page1\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('1')\">1</a></li><li class=\"page-item\" id=\"page2\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('2')\">2</a></li><li class=\"page-item\" id=\"page3\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('3')\">3</a></li>")
+                  .appendTo( "[aria-label='Page navigation']" ); // insert into the Navigation
+                } else if (resultsNumFound / callRows >= 3 && resultsNumFound / callRows < 4) {
+                    $('<ul class=\"pagination\">')
+                  .append("<li class=\"page-item\"></li><li class=\"page-item \" id=\"page1\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('1')\">1</a></li><li class=\"page-item\" id=\"page2\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('2')\">2</a></li><li class=\"page-item\" id=\"page3\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('3')\">3</a></li><li class=\"page-item\" id=\"page4\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('4')\">4</a></li>")
+                  .appendTo( "[aria-label='Page navigation']" ); // insert into the Navigation
+                } else if (resultsNumFound / callRows >= 5) {
+                  $('<ul class=\"pagination\">')
+                  .append("<li class=\"page-item\"></li><li class=\"page-item \" id=\"page1\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('1')\">1</a></li><li class=\"page-item\" id=\"page2\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('2')\">2</a></li><li class=\"page-item\" id=\"page3\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('3')\">3</a></li><li class=\"page-item\" id=\"page4\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('4')\">4</a></li><li class=\"page-item\" id=\"page5\"><a class=\"page-link\" href=\"#\" onclick=\"pageTurn('5')\">5</a></li><li class=\"page-item\"></li>")
+                  .appendTo( "[aria-label='Page navigation']" ); // insert into the Navigation
+                }
+
+                // Set the active item for Pagination
+                $(".active").removeClass("active");
+                if (pageNumber == 2) {
+                  $("#page2").addClass("active");
+                } else if (pageNumber == 3) {
+                  $("#page3").addClass("active");
+                } else if (pageNumber == 4) {
+                  $("#page4").addClass("active");
+                } else if (pageNumber == 5) {
+                  $("#page5").addClass("active");
+                } else {
+                  $("#page1").addClass("active");
+                }
+
+      }).fail(function (jqXHR, textStatus) {
+        alert("The Search has Failed.");  
+      });
+};
+</script>
+</head>
+<body>
+  <div class="row">
+    <div class="col-md-12">
+        <div class="navbar">
+            <h2><a href="/">OKNG Records Search</a></h2>
+        </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-search fa-lg"></i> Search Query
+            </div>
+            <!-- /.panel-heading -->
+            <div class="panel-body">
+              <form name="f1" onsubmit='searchSOLR(); return false;'>  
+                <div class="col-md-12">
+                  <p>SSN: <input name="ssn" type="text"></p>
+                  <p>Last Name: <input name="lastName" type="text" value="*"></p>
+                  <p>First Name: <input name="firstName" type="text"> 
+                </div>
+                
+                <div class="col-md-12" id="group"><b>Group By: </b>
+                  <label class="radio-inline"><input type="radio" name="groupRadio" value="ssn">SSN</label>
+                  <label class="radio-inline"><input type="radio" name="groupRadio" value="lastname">Last Name</label>
+                  <label class="radio-inline"><input type="radio" name="groupRadio" value="firstname">First Name</label>
+                  <label class="radio-inline"><input type="radio" name="groupRadio" value="date">Date</label>
+                  <label class="radio-inline"><input type="radio" name="groupRadio" value="docid">Doc ID</label>
+                  <label class="radio-inline"><input type="radio" name="groupRadio" value="category">Category</label>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group"><b>Items:</b>
+                      <select class="form-control" id="rowsSelect">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20" selected>20</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="1000">1000</option>
+                        <option value="10000">10000</option>
+                      </select>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group"><b>Sort By:</b>
+                        <select class="form-control" id="sortBySelect">
+                          <option value="ssn" selected>SSN</option>
+                          <option value="lastname">Last Name</option>
+                          <option value="name">First Name</option>
+                          <option value="date">Date</option>
+                          <option value="scandate">Scan Date</option>
+                          <option value="category">Category</option>
+                          <option value="docid">Doc ID</option>
+                          <option value="filename">Filename</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group"><b>Sort:</b>
+                        <select class="form-control" id="sortSelect">
+                          <option value="asc" selected>asc</option>
+                          <option value="desc">desc</option>
+                        </select>
+                    </div>
+                </div>
+              <input value="Search" type="submit"><button type="reset" value="Reset" onclick="pageReload()">Reset</button></p>
+              </form>
+            </div>
+            <!-- /.panel-body -->
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-files-o fa-lg"></i> PDF Viewer 
+                <div class="pull-right">
+                    <div class="btn-group">
+                      <button onclick="viewFullDoc()" class="btn btn-default btn-xs">View Full
+                      </button>
+
+                      <button onclick="downloadDoc()" class="btn btn-default btn-xs">Download
+                      </button>
+                    </div>
+                </div>
+            </div>
+            <!-- /.panel-heading -->
+            <div class="panel-body">
+                <div>
+                    <button id="prev">Previous</button>
+                    <button id="next">Next</button>
+                    &nbsp; &nbsp;
+                    <span>Page: <span id="page_num"></span> / <span id="page_count"></span></span>
+                  </div>
+                  
+                  <canvas id="pdf"></canvas>
+            </div>
+            <!-- /.panel-body -->
+        </div>
+    </div>
+    <div class="col-md-6">
+      <div class="panel panel-default">
+          <div class="panel-heading">
+              <div id="results"><i class="fa fa-bar-chart-o fa-lg"></i></div>
+              <nav aria-label="Page navigation"></nav>
+              <div id="groups"></div>
+          </div>
+          <!-- /.panel-heading -->
+          <div class="panel-body">
+              <div id="groupfeed"></div>
+            <div id="feed"></div>
+          </div>
+          <!-- /.panel-body -->
+      </div>
+    </div>
+  </div>
+
+<script>
+// Reset Form
+function pageReload() {
+  $(".feed-item, .results-item, .group-item, .pagination, .group-feed-item, .groupresults, .group-result-item").remove();
+  $('#f1').trigger("reset");
+
+  callStart = "0";
+
+  viewDoc('pdf/sample.pdf');
+
+}
+
+// GROUP SEARCH 
+function groupSearch(GSqstr, groupType, groupValue) {
+
+  $(".group-feed-item, .groupresults, .group-result-item").remove();
+
+      // Create the Group Item Header
+      $( '<div class="row group-feed-item">' )
+      .append('<div class="col-md-12"><h3><b>Group Results For ' + groupType + ": " + groupValue + '</b></div><div class="groupresults col-md-12"></div>')
+      .appendTo( "#groupfeed" ); // insert into the Group Feed DIV
+
+      $.ajax({
+          url: GSqstr,
+          crossDomain: true,
+          dataType:'jsonp',
+          jsonpCallback: 'callback'
+      }).done(function(data) {
+
+          // Make the results variables
+          var resultsNumFound = data.response.numFound;
+              var resultsStart = data.response.start;
+              var resultsTime = data.responseHeader.QTime;
+
+              // Create the Results HTML
+              $( '<span class="results-item">' )
+              .append(" Results Found: " + resultsNumFound + " - Result Starts At: " + resultsStart + " - Query Time: " + resultsTime + "ms")
+              .appendTo( "#groupresults" ); // insert into the Feed DIV
+
+              // Display the feed items without groups - LOOP
+              $.each(data.response.docs, function (index,item) {
+
+                    
+                  // Make the Variables
+                  if (item.fullname != null) {
+                    var name = item.fullname;
+                  } else {
+                    var name = "";
+                  }
+
+                  if (item.firstname != null) {
+                    var firstName = item.firstname;
+                  } else {
+                    var firstName = "";
+                  }
+
+                  if (item.lastname != null) {
+                    var lastName = item.lastname;
+                  } else {
+                    var lastName = "";
+                  }
+
+                  if (item.ssn != null) {
+                    var ssn = item.ssn;
+                    var ssn4 = String(ssn).slice(5, 9);
+                  } else {
+                    var ssn4 = "";
+                  }
+
+                  if (item.date != null) {
+                    var date = item.date;
+                  } else {
+                    var date = "";
+                  }
+                  
+                  if (item.scandate != null) {
+                    var scanDate = item.scandate;
+                  } else {
+                    var scanDate = "";
+                  }
+
+                  if (item.numpages != null) {
+                    var numpages = item.numpages;
+                  } else {
+                    var numbpages = "";
+                  }
+
+                  if (item.docid != null) {
+                    var docID = item.docid;
+                  } else {
+                    var docID = "";
+                  }
+
+                    if (item.link != null) {
+                    var link = item.link;
+                  } else {
+                    var link = "";
+                  }
+                  
+                  if (item.category != null) {
+                    var category = item.category;
+                  } else {
+                    var category = "";
+                  }
+                  
+
+                  // Create the List Items HTML
+                  $( '<div class="row group-result-item">' )
+                  .append('<div class="col-md-12"><h3><b>Full Name:</b> ' + name + '<button class="btn btn-default btn-md" onclick="viewDoc(\'' + link + '\', \'' + docID + '.pdf\')">View Document</button></h3></div><div class="col-md-6"><h4><b>SSN:</b> XXX-XX-' + ssn4 + '<br></h4><h4><b>First Name:</b> ' + firstName + '<br></h4><h4><b>Last Name:</b> ' + lastName + '<br></h4><h4><b>Date: </b>' + date + '<br></h4><h4><b>Scan Date: </b>' + scanDate + '</h4></div><div class="col-md-6"><h4><b>Category:</b> ' + category + '<br></h4><h4><b>Doc ID: </b>' + docID + '<br></h4><h4><b>Pages: </b>' + numpages + '<br></h4><h4><b></h4></div><div class="col-md-12"><h4><b>Document Link: <a href="' + link + '">' + link + '</a></h4></div>')
+                  .appendTo( "#feed" ); // insert into the Feed DIV
+
+              })
+      
+      }).fail(function (jqXHR, textStatus) {
+        alert("The Search has Failed.");
+      })
+}
+
+// Change Callstart Variable and Rerun Search
+function pageTurn(pageNumber) {
+                if (pageNumber == 2) {
+                  callStart = (pageNumber -1) * callRows;
+                } else if (pageNumber == 3) {
+                  callStart = (pageNumber -1) * callRows;
+                } else if (pageNumber == 4) {
+                  callStart = (pageNumber -1) * callRows;
+                } else if (pageNumber == 5) {
+                  callStart = (pageNumber -1) * callRows;
+                } else {
+                  callStart = "0";
+                }
+
+                searchSOLR(pageNumber);
+}
+
+// View Document from Feed Items
+function viewDoc(url, fileName) {
+
+  // Call New PDF
+  pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+  pdfDoc = pdfDoc_;
+  document.getElementById('page_count').textContent = pdfDoc.numPages;
+
+  // Initial/first page rendering
+  pageNum = 1;
+  renderPage(pageNum);
+  newURL = url;
+  newFileName = fileName;
+
+  return newURL, newFileName;
+  });
+}
+
+//View Full Button from PDF Viewer
+function viewFullDoc() {
+  window.location = "viewer.html?file=" + newURL;
+}
+
+//Download Button from PDF Viewer
+function downloadDoc() {
+   download(newURL, newFileName, "application/pdf");
+}
+
+// Input Validation
+$("#f1").focusout( function(e) {
+            var reg =/<(.|\n)*?>/g; 
+            if (reg.test($('#f1').val()) == true) {
+                alert('HTML Tags are not allowed');
+            }
+            e.preventDefault();
+        });
+
+// PDF Display
+// If absolute URL from the remote server is provided, configure the CORS header on that server.
+var url = 'pdf/sample.pdf';
+
+// Loaded via <script> tag, create shortcut to access PDF.js exports.
+var pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+// The workerSrc property shall be specified.
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.js';
+
+var pdfDoc = null,
+    pageNum = 1,
+    pageRendering = false,
+    pageNumPending = null,
+    scale = 0.8,
+    canvas = document.getElementById('pdf'),
+    ctx = canvas.getContext('2d');
+
+// Get page info from document, resize canvas accordingly, and render page. @param num Page number.
+ 
+function renderPage(num) {
+  pageRendering = true;
+  // Using promise to fetch the page
+  pdfDoc.getPage(num).then(function(page) {
+    var viewport = page.getViewport({scale: scale});
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    // Render PDF page into canvas context
+    var renderContext = {
+      canvasContext: ctx,
+      viewport: viewport
+    };
+    var renderTask = page.render(renderContext);
+
+    // Wait for rendering to finish
+    renderTask.promise.then(function() {
+      pageRendering = false;
+      if (pageNumPending !== null) {
+        // New page rendering is pending
+        renderPage(pageNumPending);
+        pageNumPending = null;
+      }
+    });
+  });
+
+  // Update page counters
+  document.getElementById('page_num').textContent = num;
+}
+
+// If another page rendering in progress, waits until the rendering is finised. Otherwise, executes rendering immediately.
+function queueRenderPage(num) {
+  if (pageRendering) {
+    pageNumPending = num;
+  } else {
+    renderPage(num);
+  }
+}
+
+// Displays previous page.
+
+function onPrevPage() {
+  if (pageNum <= 1) {
+    return;
+  }
+  pageNum--;
+  queueRenderPage(pageNum);
+}
+document.getElementById('prev').addEventListener('click', onPrevPage);
+
+// Displays next page.
+function onNextPage() {
+  if (pageNum >= pdfDoc.numPages) {
+    return;
+  }
+  pageNum++;
+  queueRenderPage(pageNum);
+}
+document.getElementById('next').addEventListener('click', onNextPage);
+
+// Asynchronously downloads PDF.
+pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+  pdfDoc = pdfDoc_;
+  document.getElementById('page_count').textContent = pdfDoc.numPages;
+
+  // Initial/first page rendering
+  renderPage(pageNum);
+});
+
+searchSOLR();
+
+</script>
+
+</body>
+</html>
